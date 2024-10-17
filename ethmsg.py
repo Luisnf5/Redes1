@@ -37,8 +37,24 @@ def process_ethMsg_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes,srcMac
             -srcMac: MAC origen de la trama Ethernet que se ha recibido
         Retorno: Ninguno
     '''
-    logging.debug('EthMsg: Función no implementada')
     #TODO implementar aquí
+    string = ""
+    ethSrc = bytearray()
+    ipDest = bytearray()
+    msj = bytearray()
+
+    if header == None:
+        return
+    
+    string+=str(header.ts.tv_sec) + "." + str(header.ts.tv_usec)
+    ipDest = data[0:4]
+    msj = data[4:]
+
+    string+=" " + str(srcMac) + " -> " + ipDest + ": " + msj
+
+    logging.info(string)
+
+
 
 
 
@@ -50,8 +66,9 @@ def initEthMsg(interface:str) -> int:
         Argumentos:   
 			interfaz
     '''
-    logging.debug('EthMsg: Función no implementada')
     #TODO implementar aquí
+    registerEthCallback(process_ethMsg_frame, 0x3003)
+
     return 0
 
 def sendEthMsg(ip:int, message:bytes) -> bytes:
@@ -72,6 +89,11 @@ def sendEthMsg(ip:int, message:bytes) -> bytes:
                 
           
     '''
-    logging.debug('EthMsg: Función no implementada')
     #TODO implementar aquí
+    packet = bytearray()
+    packet+=ip.to_bytes(4, 'big')
+    packet+=message
+    sendEthernetFrame(packet, len(packet), 0x3003, broadcast)
+
+
     return None
