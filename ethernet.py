@@ -64,6 +64,25 @@ def process_Ethernet_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes) -> 
     '''
     logging.debug('Trama nueva. Función no implementada')
     #TODO: Implementar aquí el código que procesa una trama Ethernet en recepción
+    global macAddress, EthernetProtocols
+
+    ethDest = bytearray()
+    ethSrc = bytearray()
+    ethType = bytearray()
+    payload = bytearray()
+
+    ethDest = data[0:6]
+    ethSrc = data[6:12]
+    ethType = data[12:14]
+    payload = data[15:]
+
+    if ethDest != broadcastAddr and ethDest != macAddress:
+        return -1
+
+    if ethType not in EthernetProtocols:
+        return -1
+    else:
+        EthernetProtocols[ethType](us, header, payload, ethSrc)
     
 
 def process_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes) -> None:
@@ -128,7 +147,7 @@ def registerEthCallback(callback_func: Callable[[ctypes.c_void_p,pcap_pkthdr,byt
     '''
     global EthernetProtocols
     #EthernetProtocols es el diccionario que relaciona función de callback y ethertype
-    logging.debug('Función no implementada')
+    EthernetProtocols[ethertype] = callback_func
     
 
 def startEthernetLevel(interface:str) -> int:
@@ -147,8 +166,14 @@ def startEthernetLevel(interface:str) -> int:
     '''
     global macAddress,handle,levelInitialized,recvThread
     handle = None
-    logging.debug('Función no implementada')
     #TODO: implementar aquí la inicialización de la interfaz y de las variables globales
+    if levelInitialized:
+        return -1
+    else:
+        levelInitialized = True
+    
+    macAddress = getHwAddr(interface)
+    handle = pcap_open_live(interface, ETH_FRAME_MAX, PROMISC, TO_MS, bytearray())
 
     #Una vez hemos abierto la interfaz para captura y hemos inicializado las variables globales (macAddress, handle y levelInitialized) arrancamos
     #el hilo de recepción
@@ -169,9 +194,14 @@ def stopEthernetLevel()->int:
         Argumentos: Ninguno
         Retorno: 0 si todo es correcto y -1 en otro caso
     '''
-    logging.debug('Función no implementada')
-    return 0
+    if not levelInitialized:
+        return -1
+    else:
+        levelInitialized = False
     
+    recvThread.stop()
+    return 0
+
 def sendEthernetFrame(data:bytes,length:int,etherType:int,dstMac:bytes) -> int:
     '''
         Nombre: sendEthernetFrame
@@ -190,6 +220,31 @@ def sendEthernetFrame(data:bytes,length:int,etherType:int,dstMac:bytes) -> int:
         Retorno: 0 si todo es correcto, -1 en otro caso
     '''
     global macAddress,handle
-    logging.debug('Función no implementada')
+    packet = bytearray()
+
+    if handle == None or macAddress == None:
+        logging.error("Ejecute primero startEthernetLevel")
+        return -1
+
+    if (length + 14) > ETH_FRAME_MAX:
+        logging.error("La trama es demasiado grande para el estandar Ethernet")
+        return -1
     
-        
+    #Añade la direccion MAC dest
+    packet+=dstMac
+
+    #Añade la direccion MAC src
+    packet+=macAddress
+
+    #Añade el typeEth
+    packet+=etherType.to_bytes(2, 'big')
+
+    #Añade el payload
+    packet+=data
+
+    if (ETH_FRAME_MIN - length - 14) < 0:
+        for _ in range(ETH_FRAME_MIN - length - 14):
+            packet.append(0)
+    
+    pcap_inject(handle, packet, len(packet))
+    return 0
