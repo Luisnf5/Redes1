@@ -237,7 +237,8 @@ def sendEthernetFrame(data:bytes,length:int,etherType:int,dstMac:bytes) -> int:
     packet+=macAddress
 
     #Añade el typeEth
-    packet+=etherType.to_bytes(2, 'big')
+    packet+=struct.pack('!H', etherType)
+
 
     #Añade el payload
     packet+=data

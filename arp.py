@@ -186,9 +186,28 @@ def initARP(interface:str) -> int:
             -Marcar la variable de nivel ARP inicializado a True
     '''
     global myIP,myMAC,arpInitialized
-    logging.debug('Función no implementada')
     #TODO implementar aquí
+    registerEthCallback(process_arp_frame, 0x0806)
+
+    if handle == None:
+        return -1
+    
+    myMac = getHwAddr(interface)
+    myIp = getIP(interface)
+    cache[myIp] = myMac
+
+    packet = createARPRequest(myIp)
+    sendEthernetFrame(packet, len(packet), 0x0806, bytes(6))
+    sendEthernetFrame(packet, len(packet), 0x0806, bytes(6))
+    sendEthernetFrame(packet, len(packet), 0x0806, bytes(6))
+
+    #Si obtiene respuesta devolver -1
+    if not awaitingResponse:
+        return -1
+
+    arpInitialized = True
     return 0
+
 
 def ARPResolution(ip:int) -> bytes:
     '''
@@ -210,6 +229,23 @@ def ARPResolution(ip:int) -> bytes:
             Como estas variables globales se leen y escriben concurrentemente deben ser protegidas con un Lock
     '''
     global requestedIP,awaitingResponse,resolvedMAC
-    logging.debug('Función no implementada')
     #TODO implementar aquí
+    requestedIP = ip
+
+    #Comprueba si la IP solicitada existe en caché
+    if (ip in cache):
+        return cache[ip]
+    
+    #Construccion, envio y recepción de arpRequest
+    packet = createARPRequest(requestedIP)
+    
+    sendEthernetFrame(packet, len(packet), 0x0806, bytes(6))
+
+    for _ in range(2):
+        if awaitingResponse:
+            sendEthernetFrame(packet, len(packet), 0x0806, bytes(6))
+        else:
+            cache[ip] = resolvedMAC
+            return resolvedMAC
+    
     return None

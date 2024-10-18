@@ -1,0 +1,3 @@
+El bytearray data contiene incluye la cabecera eth o empieza a partir del byte 14 de la trama?. En caso de que si lo contenga porque en las ARP ponemos que la ip está en data[0:4] si ahi debería estar la MAC destino
+
+
