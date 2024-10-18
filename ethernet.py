@@ -252,5 +252,5 @@ def sendEthernetFrame(data:bytes,length:int,etherType:int,dstMac:bytes) -> int:
         for _ in range(ETH_FRAME_MIN - length - 14):
             packet.append(0)
     
-    pcap_inject(handle, packet, len(packet))
+    pcap_inject(handle, bytes(packet), len(packet))
     return 0

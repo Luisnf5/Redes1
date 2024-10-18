@@ -87,9 +87,9 @@ def sendEthMsg(ip:int, message:bytes) -> bytes:
     '''
     #TODO implementar aquí
     packet = bytearray()
-    packet+=struct.pack('!4s', ip)
-    packet+=message
-    sendEthernetFrame(packet, len(packet), 0x3003, broadcast)
+    packet+=struct.pack('!I', ip)
+    packet+=bytes(message.encode())
+    sendEthernetFrame(bytes(packet), len(packet), 0x3003, broadcast)
 
 
     return None
