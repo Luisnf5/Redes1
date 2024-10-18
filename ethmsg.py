@@ -64,6 +64,7 @@ def initEthMsg(interface:str) -> int:
     '''
     #TODO implementar aquí
     registerEthCallback(process_ethMsg_frame, 0x3003)
+    
 
     return 0
 
