@@ -78,8 +78,8 @@ def process_Ethernet_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes) -> 
 
     ethDest = data[0:6]
     ethSrc = data[6:12]
-    ethType = data[12:14]
-    payload = data[15:]
+    ethType = struct.unpack("!H",data[12:14])[0]
+    payload = data[14:]
 
     if ethDest != broadcastAddr and ethDest != macAddress:
         return -1
@@ -248,7 +248,7 @@ def sendEthernetFrame(data:bytes,length:int,etherType:int,dstMac:bytes) -> int:
     #Añade el payload
     packet+=data
 
-    if (ETH_FRAME_MIN - length - 14) < 0:
+    if (ETH_FRAME_MIN - length - 14) > 0:
         for _ in range(ETH_FRAME_MIN - length - 14):
             packet.append(0)
     
