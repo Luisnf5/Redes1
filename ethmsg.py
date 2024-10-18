@@ -52,11 +52,7 @@ def process_ethMsg_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes,srcMac
 
     string+=" " + str(srcMac) + " -> " + ipDest + ": " + msj
 
-    logging.info(string)
-
-
-
-
+    logging.info(string.split('\0')[0])
 
 def initEthMsg(interface:str) -> int:
     '''
