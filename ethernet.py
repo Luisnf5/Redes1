@@ -23,6 +23,11 @@ TO_MS = 10
 broadcastAddr = bytes([0xFF]*6)
 #Diccionario que alamacena para un Ethertype dado qué función de callback se debe ejecutar
 EthernetProtocols = {}
+levelInitialized = False
+macAddress = None
+handle = None
+recvThread = None
+
 
 def getHwAddr(interface:str):
     '''
