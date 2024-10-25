@@ -130,7 +130,7 @@ class rxThread(threading.Thread):
 
    
 
-def registerEthCallback(callback_func: Callable[[ctypes.c_void_p,pcap_pkthdr,bytes],None], ethertype:int) -> None:
+def registerEthCallback(callback_func: Callable[[ctypes.c_void_p,pcap_pkthdr,bytes,bytes],None], ethertype:int) -> None:
     '''
         Nombre: registerCallback
         Descripción: Esta función recibirá el nombre de una función y su valor de ethertype asociado y añadirá en la tabla 

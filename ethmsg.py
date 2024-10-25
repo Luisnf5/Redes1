@@ -51,9 +51,11 @@ def process_ethMsg_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes,srcMac
     ipDestFormatted = '.'.join(str(b) for b in ipDest)
     mac_formatted = ':'.join(['{:02X}'.format(b) for b in srcMac])
     msj = data[4:]
-
-    #TODO srcMac hay que hacerlo como en P1 en hexadecimal. En arp.py hay una función a revisar que es para imprimir la tabla cache para facilitar la impresion en hexa
-    string+=" " + str(mac_formatted) + " -> " + str(ipDestFormatted) + ": " + msj.decode().split('\x00')[0]
+    current_time = time.time()
+    seconds = int(current_time)
+    microseconds = int((current_time - seconds) * 1e6)
+    formatted_time = f'{seconds}.{microseconds}'
+    string = "[" + formatted_time + "]" + mac_formatted + " -> " + ipDestFormatted + ": " + msj.decode().split('\x00')[0]
     logging.info(string)
 
 def initEthMsg(interface:str) -> int:

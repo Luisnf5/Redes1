@@ -16,20 +16,20 @@ import time
 from threading import Lock
 from expiringdict import ExpiringDict
 
-#Semáforo global 
-globalLock =Lock()
 #Dirección de difusión (Broadcast)
 broadcastAddr = bytes([0xFF]*6)
 #Cabecera ARP común a peticiones y respuestas. Específica para la combinación Ethernet/IP
 ARPHeader = bytes([0x00,0x01,0x08,0x00,0x06,0x04])
 #longitud (en bytes) de la cabecera común ARP
 ARP_HLEN = 6
-
+requestedIPLock = Lock()
 #Variable que alamacenará que dirección IP se está intentando resolver
 requestedIP = None
 #Variable que alamacenará que dirección MAC resuelta o None si no se ha podido obtener
+resolvedMACLock = Lock()
 resolvedMAC = None
 #Variable que alamacenará True mientras estemos esperando una respuesta ARP
+awaitingResponseLock = Lock()
 awaitingResponse = False
 
 #Variable para proteger la caché
@@ -189,25 +189,16 @@ def initARP(interface:str) -> int:
     #TODO implementar aquí
     registerEthCallback(process_arp_frame, 0x0806)
 
-    if handle == None:
-        return -1
-    
     myMac = getHwAddr(interface)
     myIp = getIP(interface)
     cache[myIp] = myMac
 
-    packet = createARPRequest(myIp)
-    sendEthernetFrame(packet, len(packet), 0x0806, bytes(6))
-    sendEthernetFrame(packet, len(packet), 0x0806, bytes(6))
-    sendEthernetFrame(packet, len(packet), 0x0806, bytes(6))
-
-    #Si obtiene respuesta devolver -1
-    if not awaitingResponse:
+    
+    if ARPResolution(myIp) is not None:
         return -1
-
+    
     arpInitialized = True
     return 0
-
 
 def ARPResolution(ip:int) -> bytes:
     '''
@@ -228,24 +219,27 @@ def ARPResolution(ip:int) -> bytes:
                 -resolvedMAC: contiene la dirección MAC resuelta (en caso de que awaitingResponse) sea False.
             Como estas variables globales se leen y escriben concurrentemente deben ser protegidas con un Lock
     '''
-    global requestedIP,awaitingResponse,resolvedMAC
-    #TODO implementar aquí
-    requestedIP = ip
+    global requestedIP,awaitingResponse,resolvedMAC, cache
+
+    with requestedIPLock:
+        requestedIP = ip
 
     #Comprueba si la IP solicitada existe en caché
-    if (ip in cache):
-        return cache[ip]
+    with cacheLock:
+        if (ip in cache):
+            return cache[ip]
     
     #Construccion, envio y recepción de arpRequest
     packet = createARPRequest(requestedIP)
-    
-    sendEthernetFrame(packet, len(packet), 0x0806, bytes(6))
 
-    for _ in range(2):
+    for _ in range(3):
+        sendEthernetFrame(packet, len(packet), 0x0806, bytes(6))
+        time.sleep(0.05)
         if awaitingResponse:
-            sendEthernetFrame(packet, len(packet), 0x0806, bytes(6))
+            continue
         else:
-            cache[ip] = resolvedMAC
+            with cacheLock:
+                cache[ip] = resolvedMAC
             return resolvedMAC
     
     return None
