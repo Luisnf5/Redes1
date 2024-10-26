@@ -37,6 +37,9 @@ cacheLock = Lock()
 #Caché de ARP. Es un diccionario similar al estándar de Python solo que eliminará las entradas a los 10 segundos
 cache = ExpiringDict(max_len=100, max_age_seconds=10)
 
+myMAC = None
+myIP = None
+
 
 
 def getIP(interface:str) -> int:
@@ -130,9 +133,32 @@ def createARPRequest(ip:int) -> bytes:
         Retorno: Bytes con el contenido de la trama de petición ARP
     '''
     global myMAC,myIP
-    frame = bytes()
-    logging.debug('Función no implementada')
-    #TODO implementar aqui
+    print(myMAC)
+    frame = bytearray()
+
+    HardwareType = 0x0001
+    ProtocolType = 0x0800
+    HardwareSize = 0x06
+    ProtocolSize = 0x04
+    OpCode = 0x0001
+    SenderEth = myMAC
+    SenderIP = myIP
+    TargetEth = broadcastAddr
+    TargetIP = ip
+
+    frame = struct.pack(
+                        '!HHBBH6sI6sI',
+                        HardwareType,
+                        ProtocolType,
+                        HardwareSize,
+                        ProtocolSize, 
+                        OpCode, 
+                        SenderEth, 
+                        SenderIP, 
+                        TargetEth, 
+                        TargetIP
+                        )
+
     return frame
 
     
@@ -146,9 +172,32 @@ def createARPReply(IP:int ,MAC:bytes) -> bytes:
         Retorno: Bytes con el contenido de la trama de petición ARP
     '''
     global myMAC,myIP
-    frame = bytes()
-    logging.debug('Función no implementada')
-    #TODO implementar aqui
+    print(myMAC)
+    frame = bytearray()
+
+    HardwareType = 0x0001
+    ProtocolType = 0x0800
+    HardwareSize = 0x06
+    ProtocolSize = 0x04
+    OpCode = 0x0001
+    SenderEth = myMAC
+    SenderIP = myIP
+    TargetEth = MAC
+    TargetIP = IP
+
+    frame = struct.pack(
+                        '!HHBBH6sI6sI',
+                        HardwareType,
+                        ProtocolType,
+                        HardwareSize,
+                        ProtocolSize, 
+                        OpCode, 
+                        SenderEth, 
+                        SenderIP, 
+                        TargetEth, 
+                        TargetIP
+                        )
+
     return frame
 
 
@@ -173,6 +222,7 @@ def process_arp_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes,srcMac:by
     '''
     logging.debug('Función no implementada')
     #TODO implementar aquí
+    
 
 
 
@@ -189,12 +239,17 @@ def initARP(interface:str) -> int:
     #TODO implementar aquí
     registerEthCallback(process_arp_frame, 0x0806)
 
-    myMac = getHwAddr(interface)
-    myIp = getIP(interface)
-    cache[myIp] = myMac
+    myMAC = getHwAddr(interface)
+    myIP = getIP(interface)
+
+    print(type(myMAC))
+    print(type(myIP))
+
+    print(f'My MAC: {myMAC}')
+    print(f'My IP: {myIP}')
 
     
-    if ARPResolution(myIp) is not None:
+    if ARPResolution(myIP) is not None:
         return -1
     
     arpInitialized = True
