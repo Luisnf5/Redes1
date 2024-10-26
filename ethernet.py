@@ -84,6 +84,7 @@ def process_Ethernet_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes) -> 
     if ethDest != broadcastAddr and ethDest != macAddress:
         return -1
 
+
     if ethType not in EthernetProtocols:
         return -1
     else:
@@ -153,7 +154,7 @@ def registerEthCallback(callback_func: Callable[[ctypes.c_void_p,pcap_pkthdr,byt
     global EthernetProtocols
     #EthernetProtocols es el diccionario que relaciona función de callback y ethertype
     EthernetProtocols[ethertype] = callback_func
-    
+
 
 def startEthernetLevel(interface:str) -> int:
     '''
