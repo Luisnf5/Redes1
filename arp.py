@@ -22,19 +22,17 @@ broadcastAddr = bytes([0xFF]*6)
 ARPHeader = bytes([0x00,0x01,0x08,0x00,0x06,0x04])
 #longitud (en bytes) de la cabecera común ARP
 ARP_HLEN = 6
-requestedIPLock = Lock()
 #Variable que alamacenará que dirección IP se está intentando resolver
 requestedIP = None
 #Variable que alamacenará que dirección MAC resuelta o None si no se ha podido obtener
-resolvedMACLock = Lock()
 resolvedMAC = None
 #Variable que alamacenará True mientras estemos esperando una respuesta ARP
-awaitingResponseLock = Lock()
 awaitingResponse = False
 
 #Variable para proteger la caché
 cacheLock = Lock()
 
+#Variable para proteger las variables protegidas
 globalLock = Lock()
 #Caché de ARP. Es un diccionario similar al estándar de Python solo que eliminará las entradas a los 10 segundos
 cache = ExpiringDict(max_len=100, max_age_seconds=10)
@@ -138,7 +136,7 @@ def processARPReply(data:bytes,MAC:bytes)->None:
             -MAC: dirección MAC origen extraída por el nivel Ethernet
         Retorno: Ninguno
     '''
-    global requestedIP,resolvedMAC,awaitingResponse,cache, myIP, requestedIPLock, resolvedMACLock, awaitingResponseLock, cacheLock, globalLock
+    global requestedIP,resolvedMAC,awaitingResponse,cache, myIP, globalLock
     #TODO implementar aquí
     print('Procesando respuesta ARP')
 
@@ -319,7 +317,7 @@ def ARPResolution(ip:int) -> bytes:
                 -resolvedMAC: contiene la dirección MAC resuelta (en caso de que awaitingResponse) sea False.
             Como estas variables globales se leen y escriben concurrentemente deben ser protegidas con un Lock
     '''
-    global requestedIP,awaitingResponse,resolvedMAC, cache, requestedIPLock, resolvedMACLock, awaitingResponseLock, cacheLock, globalLock
+    global requestedIP,awaitingResponse,resolvedMAC, cache, globalLock
 
     with globalLock:
         requestedIP = ip
