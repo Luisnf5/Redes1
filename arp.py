@@ -221,7 +221,7 @@ def createARPReply(IP:int ,MAC:bytes) -> bytes:
     ProtocolType = 0x0800
     HardwareSize = 0x06
     ProtocolSize = 0x04
-    OpCode = 0x0001
+    OpCode = 0x0002
     SenderEth = myMAC
     SenderIP = myIP
     TargetEth = MAC
@@ -276,7 +276,7 @@ def process_arp_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes,srcMac:by
     else:
         return
 
-def initARP(interface:str) -> int:
+def initARP(interface:str) -> int: #Deberia guardar mi IP en cache? 
     '''
         Nombre: initARP
         Descripción: Esta función construirá inicializará el nivel ARP. Esta función debe realizar, al menos, las siguientes tareas:

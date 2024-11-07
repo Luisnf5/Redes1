@@ -46,19 +46,15 @@ def process_ethMsg_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes,srcMac
     if header == None:
         return
     
-    string+=str(header.ts.tv_sec) + "." + str(header.ts.tv_usec)
     ipDest = data[0:4]
     ipDestFormatted = '.'.join(str(b) for b in ipDest)
     mac_formatted = ':'.join(['{:02X}'.format(b) for b in srcMac])
     msj = data[4:]
-    current_time = time.time()
-    seconds = int(current_time)
-    microseconds = int((current_time - seconds) * 1e6)
-    formatted_time = f'{seconds}.{microseconds}'
-    string = "[" + formatted_time + "]" + mac_formatted + " -> " + ipDestFormatted + ": " + msj.decode().split('\x00')[0]
-    logging.info(string)
+    formatted_time = f'{header.ts.tv_sec}.{header.ts.tv_usec}'
+    string = "[" + formatted_time + "] " + mac_formatted + " -> " + ipDestFormatted + ": " + msj.decode().split('\x00')[0]
+    logging.info(string) #mejor print??
 
-def initEthMsg(interface:str) -> int:
+def initEthMsg(interface:str) -> int: #Que tiene que hacer con el argumento interfaz?
     '''
         Nombre: initEthMsg
         Descripción: Esta función construirá inicializará el nivel ethMsg. Esta función debe realizar, al menos, las siguientes tareas:
@@ -68,11 +64,10 @@ def initEthMsg(interface:str) -> int:
     '''
     #TODO implementar aquí
     registerEthCallback(process_ethMsg_frame, 0x3003)
-    
 
     return 0
-
-def sendEthMsg(ip:int, message:bytes) -> bytes:
+ 
+def sendEthMsg(ip:int, message:bytes) -> bytes: #No debería ser bytes, sino int?
     '''
         Nombre: sendEthMsg
         Descripción: Esta función mandara un mensaje en broacast 
@@ -94,7 +89,8 @@ def sendEthMsg(ip:int, message:bytes) -> bytes:
     packet = bytearray()
     packet+=struct.pack('!I', ip)
     packet+=bytes(message.encode())
-    sendEthernetFrame(bytes(packet), len(packet), 0x3003, broadcast)
+    
 
-
-    return None
+    if sendEthernetFrame(packet, len(packet), 0x3003, broadcast) == -1:
+        return None
+    return packet
