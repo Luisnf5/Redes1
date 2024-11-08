@@ -67,8 +67,6 @@ def process_Ethernet_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes) -> 
         Retorno:
             -Ninguno
     '''
-    logging.debug('Trama nueva. Función no implementada')
-    #TODO: Implementar aquí el código que procesa una trama Ethernet en recepción
     global macAddress, EthernetProtocols
 
     ethDest = bytearray()
@@ -82,11 +80,11 @@ def process_Ethernet_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes) -> 
     payload = data[14:]
 
     if ethDest != broadcastAddr and ethDest != macAddress:
-        return -1
+        return
 
 
     if ethType not in EthernetProtocols:
-        return -1
+        return
     else:
         EthernetProtocols[ethType](us, header, payload, ethSrc)
     
@@ -172,11 +170,9 @@ def startEthernetLevel(interface:str) -> int:
     '''
     global macAddress,handle,levelInitialized,recvThread
     handle = None
-    #TODO: implementar aquí la inicialización de la interfaz y de las variables globales
+    
     if levelInitialized:
         return -1
-    else:
-        levelInitialized = True
     
     macAddress = getHwAddr(interface)
     handle = pcap_open_live(interface, ETH_FRAME_MAX, PROMISC, TO_MS, bytearray())
@@ -186,9 +182,12 @@ def startEthernetLevel(interface:str) -> int:
     recvThread = rxThread()
     recvThread.daemon = True
     recvThread.start()
+
+    levelInitialized = True
+
     return 0
 
-def stopEthernetLevel()->int:
+def stopEthernetLevel()->int: 
     global macAddress,handle,levelInitialized,recvThread
     '''
         Nombre: stopEthernetLevel
@@ -202,10 +201,11 @@ def stopEthernetLevel()->int:
     '''
     if not levelInitialized:
         return -1
-    else:
-        levelInitialized = False
-    
+        
     recvThread.stop()
+
+    levelInitialized = False
+
     return 0
 
 def sendEthernetFrame(data:bytes,length:int,etherType:int,dstMac:bytes) -> int:
@@ -253,5 +253,8 @@ def sendEthernetFrame(data:bytes,length:int,etherType:int,dstMac:bytes) -> int:
         for _ in range(ETH_FRAME_MIN - length - 14):
             packet.append(0)
     
-    pcap_inject(handle, bytes(packet), len(packet))
+    if (pcap_inject(handle, bytes(packet), len(packet)) <= 0):
+        logging.error("Error al enviar el paquete")
+        return -1
+    
     return 0

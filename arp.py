@@ -18,6 +18,8 @@ from expiringdict import ExpiringDict
 
 #Dirección de difusión (Broadcast)
 broadcastAddr = bytes([0xFF]*6)
+#Dirección null:
+nullAddr = bytes([0x00]*6)
 #Cabecera ARP común a peticiones y respuestas. Específica para la combinación Ethernet/IP
 ARPHeader = bytes([0x00,0x01,0x08,0x00,0x06,0x04])
 #longitud (en bytes) de la cabecera común ARP
@@ -34,6 +36,8 @@ cacheLock = Lock()
 
 #Variable para proteger las variables protegidas
 globalLock = Lock()
+#Variable para proteger la caché
+cacheLock = Lock()
 #Caché de ARP. Es un diccionario similar al estándar de Python solo que eliminará las entradas a los 10 segundos
 cache = ExpiringDict(max_len=100, max_age_seconds=10)
 
@@ -92,7 +96,6 @@ def processARPRequest(data:bytes,MAC:bytes)->None:
             -MAC: dirección MAC origen extraída por el nivel Ethernet
         Retorno: Ninguno
     '''
-    #TODO implementar aquí
 
     ARPheader = data[:6]
     HardwareType, ProtocolType, HardwareSize, ProtocolSize = struct.unpack('!HHBB', ARPheader)
@@ -103,10 +106,13 @@ def processARPRequest(data:bytes,MAC:bytes)->None:
     SenderIP = data[14:18]
     TargetIP = data[24:28]
 
-    if TargetIP != myIP:
+    if (SenderEth != MAC):
         return
+
+    if struct.unpack('!I', TargetIP)[0] != myIP:
+        return  
     else:
-        reply = createARPReply(SenderIP, SenderEth)
+        reply = createARPReply(struct.unpack('!I', SenderIP)[0], SenderEth)
         sendEthernetFrame(reply, len(reply), 0x0806, MAC)
 
 
@@ -137,8 +143,6 @@ def processARPReply(data:bytes,MAC:bytes)->None:
         Retorno: Ninguno
     '''
     global requestedIP,resolvedMAC,awaitingResponse,cache, myIP, globalLock
-    #TODO implementar aquí
-    print('Procesando respuesta ARP')
 
     ARPheader = data[:6]
     HardwareType, ProtocolType, HardwareSize, ProtocolSize = struct.unpack('!HHBB', ARPheader)
@@ -147,9 +151,12 @@ def processARPReply(data:bytes,MAC:bytes)->None:
         return
     
     SenderEth = data[8:14]
-    SenderIP = int.from_bytes(data[14:18], byteorder='big')
-    TargetIP = int.from_bytes(data[24:28], byteorder='big')
+    TargetEth = data[18:24]
+    SenderIP = struct.unpack('!I', data[14:18])[0]
+    TargetIP = struct.unpack('!I', data[24:28])[0]
 
+    if (SenderEth != MAC):
+        return
 
     if TargetIP != myIP:
         return
@@ -160,7 +167,8 @@ def processARPReply(data:bytes,MAC:bytes)->None:
         
             resolvedMAC = SenderEth
 
-            cache[SenderIP] = SenderEth
+            with cacheLock:
+                cache[SenderIP] = SenderEth
 
             awaitingResponse = False
 
@@ -186,7 +194,7 @@ def createARPRequest(ip:int) -> bytes:
     OpCode = 0x0001
     SenderEth = myMAC
     SenderIP = myIP
-    TargetEth = broadcastAddr
+    TargetEth = nullAddr
     TargetIP = ip
 
     frame = struct.pack(
@@ -262,7 +270,6 @@ def process_arp_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes,srcMac:by
             -srcMac: MAC origen de la trama Ethernet que se ha recibido
         Retorno: Ninguno
     '''
-    #TODO implementar aquí
 
     ARPheader = data[:8]
     HardwareType, ProtocolType, HardwareSize, ProtocolSize, OpCode = struct.unpack('!HHBBH', ARPheader)
@@ -276,7 +283,7 @@ def process_arp_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes,srcMac:by
     else:
         return
 
-def initARP(interface:str) -> int: #Deberia guardar mi IP en cache? 
+def initARP(interface:str) -> int:
     '''
         Nombre: initARP
         Descripción: Esta función construirá inicializará el nivel ARP. Esta función debe realizar, al menos, las siguientes tareas:
@@ -286,7 +293,7 @@ def initARP(interface:str) -> int: #Deberia guardar mi IP en cache?
             -Marcar la variable de nivel ARP inicializado a True
     '''
     global myIP,myMAC,arpInitialized
-    #TODO implementar aquí
+
     registerEthCallback(process_arp_frame, 0x0806)
 
     myMAC = getHwAddr(interface)
@@ -294,6 +301,9 @@ def initARP(interface:str) -> int: #Deberia guardar mi IP en cache?
     
     if ARPResolution(myIP) is not None:
         return -1
+    
+    with cacheLock:
+        cache[myIP] = myMAC
     
     arpInitialized = True
     return 0
@@ -323,7 +333,7 @@ def ARPResolution(ip:int) -> bytes:
         requestedIP = ip
 
     #Comprueba si la IP solicitada existe en caché
-    with globalLock:
+    with cacheLock:
         if (ip in cache):
             return cache[ip]
     
@@ -339,7 +349,8 @@ def ARPResolution(ip:int) -> bytes:
             if awaitingResponse:
                 continue
             else:
-                cache[ip] = resolvedMAC
-                return resolvedMAC
+                with cacheLock:
+                    cache[ip] = resolvedMAC
+                    return resolvedMAC
     
     return None

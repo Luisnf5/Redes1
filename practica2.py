@@ -24,7 +24,7 @@ def printHelp():
 	print ( "\ta <direccionIP> : Solicita ARP Request sobre la IP indicada\n")
 	print ( "\tp : Imprime cache ARP\n")
 	print ( "\th : Muestra la ayuda\n")
-	#TODO g : ARP gratuito
+	print ( "\tg : Mandar ARP Gratuito\n")
 	print ( "\tq : Salir del programa\n")
 
 
@@ -105,7 +105,13 @@ if __name__ == "__main__":
 				print(f"Enviando mensaje: {mensaje}")
 				# Aquí puedes llamar a una función que maneje el envío de mensajes
 				sendEthMsg(ip, mensaje)
-			#TODO ARP gratuito
+			elif comando == 'g':
+				ip = getIP(args.interface)
+				macR = ARPResolution(ip)
+				if macR is None:
+					print("La dirección IP está libre en la red")
+				else:
+					print("Se encontró una dirección MAC de otro dispositivo asociada a la IP en la red")
 			else:
 				print("Comando no reconocido. 'h' para ayuda.\n")
 		except KeyboardInterrupt:

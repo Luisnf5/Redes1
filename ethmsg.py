@@ -37,7 +37,7 @@ def process_ethMsg_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes,srcMac
             -srcMac: MAC origen de la trama Ethernet que se ha recibido
         Retorno: Ninguno
     '''
-    #TODO implementar aquí
+
     string = ""
     ethSrc = bytearray()
     ipDest = bytearray()
@@ -52,9 +52,9 @@ def process_ethMsg_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes,srcMac
     msj = data[4:]
     formatted_time = f'{header.ts.tv_sec}.{header.ts.tv_usec}'
     string = "[" + formatted_time + "] " + mac_formatted + " -> " + ipDestFormatted + ": " + msj.decode().split('\x00')[0]
-    logging.info(string) #mejor print??
+    print(string) 
 
-def initEthMsg(interface:str) -> int: #Que tiene que hacer con el argumento interfaz?
+def initEthMsg(interface:str) -> int:
     '''
         Nombre: initEthMsg
         Descripción: Esta función construirá inicializará el nivel ethMsg. Esta función debe realizar, al menos, las siguientes tareas:
@@ -62,12 +62,12 @@ def initEthMsg(interface:str) -> int: #Que tiene que hacer con el argumento inte
         Argumentos:   
 			interfaz
     '''
-    #TODO implementar aquí
+
     registerEthCallback(process_ethMsg_frame, 0x3003)
 
     return 0
  
-def sendEthMsg(ip:int, message:bytes) -> bytes: #No debería ser bytes, sino int?
+def sendEthMsg(ip:int, message:bytes) -> int:
     '''
         Nombre: sendEthMsg
         Descripción: Esta función mandara un mensaje en broacast 
@@ -85,7 +85,7 @@ def sendEthMsg(ip:int, message:bytes) -> bytes: #No debería ser bytes, sino int
                 
           
     '''
-    #TODO implementar aquí
+
     packet = bytearray()
     packet+=struct.pack('!I', ip)
     packet+=bytes(message.encode())
@@ -93,4 +93,5 @@ def sendEthMsg(ip:int, message:bytes) -> bytes: #No debería ser bytes, sino int
 
     if sendEthernetFrame(packet, len(packet), 0x3003, broadcast) == -1:
         return None
-    return packet
+    
+    return len(packet)
