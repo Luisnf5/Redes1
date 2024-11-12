@@ -70,7 +70,7 @@ def printCache()->None:
         Argumentos: Ninguno
         Retorno: Ninguno
     '''
-    print('{:>12}\t\t{:>12}'.format('IP','MAC'))
+    print('{:>12}\t\t{:>12}'.format('IP','MAC')) 
     with cacheLock:
         for k in cache:
             if k in cache:
