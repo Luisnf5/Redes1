@@ -1,0 +1,47 @@
+AUTORES: DAVID LOSADA GARCÍA Y LUIS NÚÑEZ FERNÁNDEZ // PAREJA 5
+
+Normativa de entrega cumplida en su totalidad: 2,5%
+REALIZADO
+
+Fichero leeme.txt bien explicado: 2,5%
+REALIZADO-->Se puede ver a continuación.
+
+Recibir tramas Ethernet, realizar comprobaciones y llamar correctamente a la función de callback de nivel superior 10%
+REALIZADO
+
+Enviar tramas Ethernet  correctamente 10%
+REALIZADO
+
+Imprimir mensajes sobre el protocolo 0x3003 10%
+REALIZADO
+Se realiza la prueba 1 de envío de mensajes y se ve que h1 envía un mensaje y es recibido e impreso por pantalla por h2, por lo que asumimos que tanto el recibir tramas Ethernet como
+el recibirlas está correctamente realizado, ya que si no no le lelgaría el mensaje a h2.
+
+Enviar correctamente peticiones ARP 10%
+REALIZADO
+
+Procesar correctamente peticiones ARP recibidas 15%
+REALIZADO
+
+Enviar correctamente respuestas ARP 10%
+REALIZADO
+
+Procesar correctamente respuestas ARP 10%
+REALIZADO
+
+Usamos wireshark para comprobar que las peticiones de ARP se realizan de forma correcta. Capturamos la traza de h2 y vemos que efectivamente ha recibido dos petciones de ARP, una generada 
+por nuestro programa y la otra generada automáticamente por el propio wireshark. Vemos que la longitud de los mismos puede ser diferente ya que nosotros completamos la len de la traza hasta
+un mínimo de 60 bytes rellenando con 0s.
+
+Manejo correcto de la caché ARP 5%
+REALIZADO-->Se comprueba con el uso de whireshark que una vez se ha realizado una petición de ARP correcta desde h1 a h2 para conocer la MAC de este último, si se realiza una nueva petición
+de la misma MAC no se verán nuevos paquetes ARP ya que se tiene la información de la ip y mac en la caché ARP.
+
+Uso correcto de Locks 5%
+REALIZADO-->Se ha comprobado que antes de acceder a la caché se hace un with cacheLock. Además se hace lo mismo para las variables awaitingResponse, requestedIP y resolvedMAC, en este caso
+usando globalLock para las tres.
+
+Realiza correctamente el ARP Gratuito 10%
+REALIZADO-->Para ello se ha realizado la prueba 3 de inicialización. Después de cambiar la ip de h2 para que sea igual que la de h1 y ejecutar 
+practica2.py con el argumento --itf h1-eth0, probamos a hacer lo mismo en h2. Nos saltará un error diciendo que no se ha podido inicializar el ARP, debido a que al hacer ARP gratuito
+para comprobar si la IP no pertence a otra interfaz se ve que correspone ya a h1.
