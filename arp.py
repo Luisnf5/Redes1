@@ -30,10 +30,6 @@ requestedIP = None
 resolvedMAC = None
 #Variable que alamacenará True mientras estemos esperando una respuesta ARP
 awaitingResponse = False
-
-#Variable para proteger la caché
-cacheLock = Lock()
-
 #Variable para proteger las variables protegidas
 globalLock = Lock()
 #Variable para proteger la caché
@@ -97,14 +93,9 @@ def processARPRequest(data:bytes,MAC:bytes)->None:
         Retorno: Ninguno
     '''
 
-    ARPheader = data[:6]
-    HardwareType, ProtocolType, HardwareSize, ProtocolSize = struct.unpack('!HHBB', ARPheader)
-    if (HardwareType != 0x0001 or ProtocolType != 0x0800 or HardwareSize != 0x06 or ProtocolSize != 0x04):
-        return
-    
-    SenderEth = data[8:14]
-    SenderIP = data[14:18]
-    TargetIP = data[24:28]
+    SenderEth = data[0:6]
+    SenderIP = data[6:10]
+    TargetIP = data[16:20]
 
     if (SenderEth != MAC):
         return
@@ -144,16 +135,10 @@ def processARPReply(data:bytes,MAC:bytes)->None:
     '''
     global requestedIP,resolvedMAC,awaitingResponse,cache, myIP, globalLock
 
-    ARPheader = data[:6]
-    HardwareType, ProtocolType, HardwareSize, ProtocolSize = struct.unpack('!HHBB', ARPheader)
-
-    if (HardwareType != 0x0001 or ProtocolType != 0x0800 or HardwareSize != 0x06 or ProtocolSize != 0x04):
-        return
-    
-    SenderEth = data[8:14]
-    TargetEth = data[18:24]
-    SenderIP = struct.unpack('!I', data[14:18])[0]
-    TargetIP = struct.unpack('!I', data[24:28])[0]
+    SenderEth = data[0:6]
+    TargetEth = data[10:16]
+    SenderIP = struct.unpack('!I', data[6:10])[0]
+    TargetIP = struct.unpack('!I', data[16:20])[0]
 
     if (SenderEth != MAC):
         return
@@ -271,15 +256,16 @@ def process_arp_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes,srcMac:by
         Retorno: Ninguno
     '''
 
-    ARPheader = data[:8]
-    HardwareType, ProtocolType, HardwareSize, ProtocolSize, OpCode = struct.unpack('!HHBBH', ARPheader)
-    if (HardwareType != 0x0001 or ProtocolType != 0x0800 or HardwareSize != 0x06 or ProtocolSize != 0x04):
+    head = data[:8]
+    if (head[:6] != ARPHeader):
         return
+    OpCode = struct.unpack('!H', data[6:8])[0]
+    msg = data[8:]
     
     if OpCode == 0x0001:
-        processARPRequest(data, srcMac)
+        processARPRequest(msg, srcMac)
     elif OpCode == 0x0002:
-        processARPReply(data, srcMac)
+        processARPReply(msg, srcMac)
     else:
         return
 
