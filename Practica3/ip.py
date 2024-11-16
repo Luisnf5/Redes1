@@ -141,25 +141,28 @@ def process_IP_datagram(us,header,data,srcMac):
 
     header_len = ihl*4
 
-    ip_header = struct.unpack('!BBHHHBBHII', data[:20])
+    ip_header1 = struct.unpack('!BBHHHBB', data[:10])
+    ip_header_checksum = struct.unpack('H', data[10:12])
+    ip_header2 = struct.unpack('!II', data[12:20])
 
-    ver_ihl = ip_header[0]
-    type_of_service = ip_header[1]
-    total_length = ip_header[2]
-    ipid = ip_header[3]
-    fragm_data = ip_header[4]
-    ttl = ip_header[5]
-    protocol = ip_header[6]
-    checksum = ip_header[7]
-    src_ip = ip_header[8]
-    dst_ip = ip_header[9]
+    ver_ihl = ip_header1[0]
+    type_of_service = ip_header1[1]
+    total_length = ip_header1[2]
+    ipid = ip_header1[3]
+    fragm_data = ip_header1[4]
+    ttl = ip_header1[5]
+    protocol = ip_header1[6]
+    checksum = ip_header_checksum[0]
+    src_ip = ip_header2[0]
+    dst_ip = ip_header2[1]
 
     if header_len > 20:
         ipOpts = data[20:header_len]
         logging.debug("Opciones IP: %s", ipOpts)
 
-    if checksum != chksum(data[:20]):
-        logging.debug("Checksum incorrecto")
+    calculated_checksum = chksum(data[:10] + data[12:header_len])
+    if checksum != calculated_checksum:
+        logging.debug("Checksum incorrecto %d %d", checksum, calculated_checksum)
         return
     
     flags = fragm_data & 0xE000
@@ -178,9 +181,9 @@ def process_IP_datagram(us,header,data,srcMac):
     logging.debug('TTL: %d', ttl)
     logging.debug('Valor de las banderas DF y MF: %d %d', DF, MF)
     logging.debug('Valor de offset: %d', offset)
-    ipSrcFormatted = '.'.join(str(b) for b in src_ip)
+    ipSrcFormatted = '.'.join(str(b) for b in struct.pack('!I', src_ip))
     logging.debug('IP origen: %s', ipSrcFormatted)
-    ipDstFormatted = '.'.join(str(b) for b in dst_ip)
+    ipDstFormatted = '.'.join(str(b) for b in struct.pack('!I', dst_ip))
     logging.debug('IP destino: %s', ipDstFormatted)
     logging.debug('Protocolo: %d', protocol)
 
@@ -281,9 +284,7 @@ def sendIPDatagram(dstIP,data,protocol):
         logging.debug("Fragmentación no implementada")
         return False
     
-    checksum = chksum(data[:20])
-    
-    ip_header = struct.pack('!BBHHHBBHII',
+    ip_header_chk = struct.pack('!BBHHHBBHII',
                             0x45,               #   VERSION & IHL (4b + 4b) (1B)
                             0x00,               #   TYPE OF SERVICE (1B)
                             len(data) + 20,     #   TOTAL LENGTH (2B)
@@ -291,18 +292,41 @@ def sendIPDatagram(dstIP,data,protocol):
                             0x0000,             #   FLAGS & OFFSET (3b + 13b) (2B)
                             0x40,               #   TIME TO LIVE (1B)
                             protocol,           #   PROTOCOL (1B)
-                            checksum,           #   HEADER CHECKSUM
+                            0,                  #   HEADER CHECKSUM
+                            myIP,               #   SOURCE ADDRESS
+                            dstIP)              #   DESTINATION ADDRESS
+    
+    checksum = struct.pack('H', chksum(ip_header_chk))
+    print(chksum(ip_header_chk))
+
+    ip_header1 = struct.pack('!BBHHHBB',
+                            0x45,               #   VERSION & IHL (4b + 4b) (1B)
+                            0x00,               #   TYPE OF SERVICE (1B)
+                            len(data) + 20,     #   TOTAL LENGTH (2B)
+                            IPID,               #   IDENTIFICATION (2B)
+                            0x0000,             #   FLAGS & OFFSET (3b + 13b) (2B)
+                            0x40,               #   TIME TO LIVE (1B)
+                            protocol)           #   PROTOCOL (1B)
+    
+    ip_header2 = struct.pack('!II',
                             myIP,               #   SOURCE ADDRESS
                             dstIP)              #   DESTINATION ADDRESS
 
-    frame = ip_header + data
+    frame = ip_header1 + checksum + ip_header2 + data
 
     if (myIP & netmask) == (dstIP & netmask):
         dstMac = ARPResolution(dstIP)
     else:
         dstMac = ARPResolution(defaultGW)
 
-    sendEthernetFrame(dstMac, frame, len(frame), 0x0800)
+    if dstMac == None:
+        logging.debug('ARP devolvió None')
+        return False
+    
+
+    print(len(frame))
+    print(type(len(frame)))
+    sendEthernetFrame(frame, len(frame), 0x0800, dstMac)
     IPID += 1
 
     return True
