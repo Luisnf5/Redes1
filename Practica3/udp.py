@@ -17,8 +17,7 @@ def getUDPSourcePort():
         Descripción: Esta función obtiene un puerto origen libre en la máquina actual.
         Argumentos:
             -Ninguno
-        Retorno: Entero de 16 bits con el número de puerto origen disponible
-          
+        Retorno: Entero de 16 bits con el número de puerto origen disponible     
     '''
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.bind(('', 0))
@@ -45,12 +44,22 @@ def process_UDP_datagram(us,header,data,srcIP):
             -data: array de bytes con el conenido del datagrama UDP
             -srcIP: dirección IP que ha enviado el datagrama actual.
         Retorno: Ninguno
-          
     '''
+    udp_header = struct.unpack('!HHHH', data[:UDP_HLEN])
+
+    srcPort = udp_header[0]
+    dstPort = udp_header[1]
+    length = udp_header[2]
+    checksum = udp_header[3]
+
+    logging.debug('Puerto origen: %d', srcPort)
+    logging.debug('Puerto destino: %d', dstPort)
+    logging.debug('DATA: %s', data[ARP_HLEN:])
+
 
 
 def sendUDPDatagram(data,dstPort,dstIP):
-     '''
+    '''
         Nombre: sendUDPDatagram
         Descripción: Esta función construye un datagrama UDP y lo envía
         Esta función debe realizar, al menos, las siguientes tareas:
@@ -65,11 +74,23 @@ def sendUDPDatagram(data,dstPort,dstIP):
             -dstPort: entero de 16 bits que indica el número de puerto destino a usar
             -dstIP: entero de 32 bits con la IP destino del datagrama UDP
         Retorno: True o False en función de si se ha enviado el datagrama correctamente o no
-          
     '''
+    
     udp_datagram = bytes()
 
+    srcPort = getUDPSourcePort()
 
+    udp_header = struct.pack('!HHHH',       
+                            srcPort,        #   SOURCE PORT (2B)
+                            dstPort,        #   DESTINATION PORT (2B)
+                            len(data) + 8,  #   LENGTH (2B)
+                            0)              #   CHECKSUM (2B)
+
+    udp_datagram += udp_header
+    udp_datagram += data
+
+    sendIPDatagram(dstIP, udp_datagram, UDP_PROTO)
+    
 def initUDP():
     '''
         Nombre: initUDP
@@ -80,5 +101,5 @@ def initUDP():
         Argumentos:
             -Ninguno
         Retorno: Ninguno
-          
     '''
+    registerIPProtocol(process_UDP_datagram, UDP_PROTO)
