@@ -18,6 +18,19 @@ protocols={}
 IP_MIN_HLEN = 20
 #Tamaño máximo de la cabecera IP
 IP_MAX_HLEN = 60
+#IPID a numero de pareja
+IPID = None
+
+#Declaración de variables globales
+myIP = None
+MTU = None
+netmask = None
+defaultGW = None
+ipOpts = None
+
+
+
+
 def chksum(msg):
     '''
         Nombre: chksum
@@ -60,7 +73,7 @@ def getMTU(interface):
     return mtu
    
 def getNetmask(interface):
-    '''
+    '''initARP
         Nombre: getNetmask
         Descripción: Esta función obteiene la máscara de red asignada a una interfaz 
         Argumentos:
@@ -93,6 +106,7 @@ def getDefaultGW(interface):
 
 
 def process_IP_datagram(us,header,data,srcMac):
+    global MTU
     '''
         Nombre: process_IP_datagram
         Descripción: Esta función procesa datagramas IP recibidos.
@@ -122,11 +136,61 @@ def process_IP_datagram(us,header,data,srcMac):
         Retorno: Ninguno
     '''
 
+    ver_ihl = data[0]
+    ihl = ver_ihl & 0x0F
 
+    header_len = ihl*4
 
+    ip_header = struct.unpack('!BBHHHBBHII', data[:20])
 
+    ver_ihl = ip_header[0]
+    type_of_service = ip_header[1]
+    total_length = ip_header[2]
+    ipid = ip_header[3]
+    fragm_data = ip_header[4]
+    ttl = ip_header[5]
+    protocol = ip_header[6]
+    checksum = ip_header[7]
+    src_ip = ip_header[8]
+    dst_ip = ip_header[9]
 
-def registerIPProtocol(callback,protocol):
+    if header_len > 20:
+        ipOpts = data[20:header_len]
+        logging.debug("Opciones IP: %s", ipOpts)
+
+    if checksum != chksum(data[:20]):
+        logging.debug("Checksum incorrecto")
+        return
+    
+    flags = fragm_data & 0xE000
+    offset = fragm_data & 0x1FFF
+    Res = (flags >> 15) & 1
+    DF = (flags >> 14) & 1
+    MF = (flags >> 13) & 1
+
+    if offset != 0:
+        logging.info("Reensamblado no implementado, deshechando datagrama...")
+        return
+    
+
+    logging.debug('Longitud de la cabecera IP: %d', (ver_ihl & 0x0F)*4)
+    logging.debug('IPID: %d', ipid)
+    logging.debug('TTL: %d', ttl)
+    logging.debug('Valor de las banderas DF y MF: %d %d', DF, MF)
+    logging.debug('Valor de offset: %d', offset)
+    ipSrcFormatted = '.'.join(str(b) for b in src_ip)
+    logging.debug('IP origen: %s', ipSrcFormatted)
+    ipDstFormatted = '.'.join(str(b) for b in dst_ip)
+    logging.debug('IP destino: %s', ipDstFormatted)
+    logging.debug('Protocolo: %d', protocol)
+
+    if protocol in protocols:
+        protocols[protocol](us,header,data[20:],src_ip)
+    else:
+        logging.debug("Protocolo no registrado")
+
+def registerIPProtocol(callback_func: Callable[[ctypes.c_void_p,pcap_pkthdr,bytes,bytes],None], protocol:int):
+    global protocols
     '''
         Nombre: registerIPProtocol
         Descripción: Esta función recibirá el nombre de una función y su valor de protocolo IP asociado y añadirá en la tabla 
@@ -147,9 +211,12 @@ def registerIPProtocol(callback,protocol):
             -protocol: valor del campo protocolo de IP para el cuál se quiere registrar una función de callback.
         Retorno: Ninguno 
     '''
+    
+    protocols[protocol] = callback_func
+    
 
-def initIP(interface,opts=None):
-    global myIP, MTU, netmask, defaultGW,ipOpts
+def initIP(interface,opts=None) -> bool:
+    global myIP, MTU, netmask, defaultGW, ipOpts, IPID
     '''
         Nombre: initIP
         Descripción: Esta función inicializará el nivel IP. Esta función debe realizar, al menos, las siguientes tareas:
@@ -168,8 +235,23 @@ def initIP(interface,opts=None):
         Retorno: True o False en función de si se ha inicializado el nivel o no
     '''
 
+    if initARP(interface) == -1:
+        logging.error("Error inicializando ARP")
+        return False
+    
+    myIP = getIP(interface)
+    MTU = getMTU(interface)
+    netmask = getNetmask(interface)
+    defaultGW = getDefaultGW(interface)
+    ipOpts = opts
+
+    registerEthCallback(process_IP_datagram,0x0800)
+    IPID = 5
+
+    return True
+
 def sendIPDatagram(dstIP,data,protocol):
-    global IPID
+    global IPID, myIP
     '''
         Nombre: sendIPDatagram
         Descripción: Esta función construye un datagrama IP y lo envía. En caso de que los datos a enviar sean muy grandes la función
@@ -194,6 +276,36 @@ def sendIPDatagram(dstIP,data,protocol):
           
     '''
     ip_header = bytes()
+
+    if len(data) > MTU:
+        logging.debug("Fragmentación no implementada")
+        return False
+    
+    checksum = chksum(data[:20])
+    
+    ip_header = struct.pack('!BBHHHBBHII',
+                            0x45,               #   VERSION & IHL (4b + 4b) (1B)
+                            0x00,               #   TYPE OF SERVICE (1B)
+                            len(data) + 20,     #   TOTAL LENGTH (2B)
+                            IPID,               #   IDENTIFICATION (2B)
+                            0x0000,             #   FLAGS & OFFSET (3b + 13b) (2B)
+                            0x40,               #   TIME TO LIVE (1B)
+                            protocol,           #   PROTOCOL (1B)
+                            checksum,           #   HEADER CHECKSUM
+                            myIP,               #   SOURCE ADDRESS
+                            dstIP)              #   DESTINATION ADDRESS
+
+    frame = ip_header + data
+
+    if (myIP & netmask) == (dstIP & netmask):
+        dstMac = ARPResolution(dstIP)
+    else:
+        dstMac = ARPResolution(defaultGW)
+
+    sendEthernetFrame(dstMac, frame, len(frame), 0x0800)
+    IPID += 1
+
+    return True
 
 
 
