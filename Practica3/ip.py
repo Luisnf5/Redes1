@@ -278,55 +278,94 @@ def sendIPDatagram(dstIP,data,protocol):
         Retorno: True o False en función de si se ha enviado el datagrama correctamente o no
           
     '''
-    ip_header = bytes()
+    max_data_len = MTU - 20
+    fragments = []
+    fragmented = False
+    f_offset = 0x0000
 
-    if len(data) > MTU:
-        logging.debug("Fragmentación no implementada")
-        return False
-    
-    ip_header_chk = struct.pack('!BBHHHBBHII',
-                            0x45,               #   VERSION & IHL (4b + 4b) (1B)
-                            0x00,               #   TYPE OF SERVICE (1B)
-                            len(data) + 20,     #   TOTAL LENGTH (2B)
-                            IPID,               #   IDENTIFICATION (2B)
-                            0x0000,             #   FLAGS & OFFSET (3b + 13b) (2B)
-                            0x40,               #   TIME TO LIVE (1B)
-                            protocol,           #   PROTOCOL (1B)
-                            0,                  #   HEADER CHECKSUM
-                            myIP,               #   SOURCE ADDRESS
-                            dstIP)              #   DESTINATION ADDRESS
-    
-    checksum = struct.pack('H', chksum(ip_header_chk))
-    print(chksum(ip_header_chk))
+    #CALCULO DE FRAGMENTO/S
+    if len(data) > max_data_len:
+        fragmented = True
+        if max_data_len % 8 != 0:
+            logging.debug('not module of 8 for fragmentation')
+            max_data_len = max_data_len - max_data_len % 8
+        
+        if max_data_len % 8 == 0:
+            logging.debug('module of 8 confirmed')
+            
+        i = 0
+        
+        while (len(data) > max_data_len):
+            fragments.append(data[max_data_len*i, max_data_len*(i+1)])
+            data = data[max_data_len*(i+1):]
+            i += 1
 
-    ip_header1 = struct.pack('!BBHHHBB',
-                            0x45,               #   VERSION & IHL (4b + 4b) (1B)
-                            0x00,               #   TYPE OF SERVICE (1B)
-                            len(data) + 20,     #   TOTAL LENGTH (2B)
-                            IPID,               #   IDENTIFICATION (2B)
-                            0x0000,             #   FLAGS & OFFSET (3b + 13b) (2B)
-                            0x40,               #   TIME TO LIVE (1B)
-                            protocol)           #   PROTOCOL (1B)
-    
-    ip_header2 = struct.pack('!II',
-                            myIP,               #   SOURCE ADDRESS
-                            dstIP)              #   DESTINATION ADDRESS
-
-    frame = ip_header1 + checksum + ip_header2 + data
-
-    if (myIP & netmask) == (dstIP & netmask):
-        dstMac = ARPResolution(dstIP)
+        if len(data) != 0:
+            fragments.append(data)
+        
     else:
-        dstMac = ARPResolution(defaultGW)
+        fragments.append(data)
 
-    if dstMac == None:
-        logging.debug('ARP devolvió None')
-        return False
-    
+    #ENVIO DE FRAGMENTO/S
+    i = 0
+    for data in fragments:
+        if fragmented:
+            if data == fragments[0]:
+                f_offset = 0x2000
+            else:
+                real_offset = struct.pack('!H', max_data_len)
+                real_offset = (real_offset >> 3)
+                if data == fragments[len(fragments)-1]:
+                    flags = 0x0000
+                else:
+                    flags = 0x2000
+                
+                f_offset = flags | real_offset
 
-    print(len(frame))
-    print(type(len(frame)))
-    sendEthernetFrame(frame, len(frame), 0x0800, dstMac)
+        ip_header_chk = struct.pack('!BBHHHBBHII',
+                                0x45,               #   VERSION & IHL (4b + 4b) (1B)
+                                0x00,               #   TYPE OF SERVICE (1B)
+                                len(data) + 20,     #   TOTAL LENGTH (2B)
+                                IPID,               #   IDENTIFICATION (2B)
+                                f_offset,           #   FLAGS & OFFSET (3b + 13b) (2B)
+                                0x40,               #   TIME TO LIVE (1B)
+                                protocol,           #   PROTOCOL (1B)
+                                0,                  #   HEADER CHECKSUM
+                                myIP,               #   SOURCE ADDRESS
+                                dstIP)              #   DESTINATION ADDRESS
+        
+        checksum = struct.pack('H', chksum(ip_header_chk))
+        print(chksum(ip_header_chk))
+
+        ip_header1 = struct.pack('!BBHHHBB',
+                                0x45,               #   VERSION & IHL (4b + 4b) (1B)
+                                0x00,               #   TYPE OF SERVICE (1B)
+                                len(data) + 20,     #   TOTAL LENGTH (2B)
+                                IPID,               #   IDENTIFICATION (2B)
+                                f_offset,           #   FLAGS & OFFSET (3b + 13b) (2B)
+                                0x40,               #   TIME TO LIVE (1B)
+                                protocol)           #   PROTOCOL (1B)
+        
+        ip_header2 = struct.pack('!II',
+                                myIP,               #   SOURCE ADDRESS
+                                dstIP)              #   DESTINATION ADDRESS
+
+        frame = ip_header1 + checksum + ip_header2 + data
+
+        if (myIP & netmask) == (dstIP & netmask):
+            dstMac = ARPResolution(dstIP)
+        else:
+            dstMac = ARPResolution(defaultGW)
+
+        if dstMac == None:
+            logging.debug('ARP devolvió None')
+            return False
+        
+
+        print(len(frame))
+        print(type(len(frame)))
+        sendEthernetFrame(frame, len(frame), 0x0800, dstMac)
+
     IPID += 1
 
     return True
