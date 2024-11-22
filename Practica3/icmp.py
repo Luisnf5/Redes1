@@ -18,6 +18,29 @@ ICMP_ECHO_REPLY_TYPE = 0
 timeLock = Lock()
 icmp_send_times = {}
 
+def chksum(msg):
+    '''
+        Nombre: chksum
+        Descripción: Esta función calcula el checksum sobre unos datos de entrada dados (msg)
+        Argumentos:
+            -msg: array de bytes con el contenido sobre el que se calculará el checksum
+        Retorno: Entero de 16 bits con el resultado del checksum en ORDEN DE RED
+    '''
+    # Si la longitud del mensaje es impar, añade un byte a 0
+    if len(msg) % 2 != 0:
+        msg += b'\0'
+    
+    s = 0
+    for i in range(0, len(msg), 2):
+        a = msg[i]
+        b = msg[i + 1]
+        s = s + (a + (b << 8))
+    
+    s = s + (s >> 16)
+    s = ~s & 0xffff
+
+    return s
+
 def process_ICMP_message(us,header,data,srcIp):
     '''
         Nombre: process_ICMP_message
@@ -78,9 +101,30 @@ def sendICMPMessage(data,type,code,icmp_id,icmp_seqnum,dstIP):
         Retorno: True o False en función de si se ha enviado el mensaje correctamente o no
           
     '''
-  
-    icmp_message = bytes()
-   
+    global icmp_send_times, timeLock
+
+    if type not in [ICMP_ECHO_REQUEST_TYPE, ICMP_ECHO_REPLY_TYPE]:
+        return False
+
+    # Construir la cabecera ICMP
+    icmp_header = struct.pack('!BBHHH', type, code, 0, icmp_id, icmp_seqnum)
+    icmp_message = icmp_header + data
+
+    # Calcular el checksum
+    checksum = chksum(icmp_message)
+    icmp_header = struct.pack('!BBHHH', type, code, checksum, icmp_id, icmp_seqnum)
+    icmp_message = icmp_header + data
+
+    if type == ICMP_ECHO_REQUEST_TYPE:
+        # Guardar el tiempo de envío
+        key = f"{dstIP}-{icmp_id}-{icmp_seqnum}"
+        with timeLock:
+            icmp_send_times[key] = time.time()
+
+    # Llamar a sendIPDatagram para enviar el mensaje ICMP
+    
+    return sendIPDatagram(dstIP, icmp_message, ICMP_PROTO)
+
 def initICMP():
     '''
         Nombre: initICMP
@@ -93,3 +137,4 @@ def initICMP():
         Retorno: Ninguno
           
     '''
+    registerIPProtocol(process_ICMP_message, ICMP_PROTO)
