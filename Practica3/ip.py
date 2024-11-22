@@ -254,7 +254,7 @@ def initIP(interface,opts=None) -> bool:
     return True
 
 def sendIPDatagram(dstIP,data,protocol):
-    global IPID, myIP
+    global IPID, myIP, ipOpts
     '''
         Nombre: sendIPDatagram
         Descripción: Esta función construye un datagrama IP y lo envía. En caso de que los datos a enviar sean muy grandes la función
@@ -283,6 +283,14 @@ def sendIPDatagram(dstIP,data,protocol):
     fragmented = False
     f_offset = 0x0000
 
+    vers = 0x40
+    if ipOpts != None:
+        ihl = 0x05 + (len(ipOpts) // 4)
+    else:
+        ihl = 0x05
+    
+    verIHL = vers | ihl
+
     #CALCULO DE FRAGMENTO/S
     if len(data) > max_data_len:
         fragmented = True
@@ -296,7 +304,7 @@ def sendIPDatagram(dstIP,data,protocol):
         i = 0
         
         while (len(data) > max_data_len):
-            fragments.append(data[max_data_len*i, max_data_len*(i+1)])
+            fragments.append(data[max_data_len*i : max_data_len*(i+1)])
             data = data[max_data_len*(i+1):]
             i += 1
 
@@ -314,7 +322,7 @@ def sendIPDatagram(dstIP,data,protocol):
                 f_offset = 0x2000
             else:
                 real_offset = struct.pack('!H', max_data_len)
-                real_offset = (real_offset >> 3)
+                real_offset = (max_data_len >> 3)
                 if data == fragments[len(fragments)-1]:
                     flags = 0x0000
                 else:
@@ -323,9 +331,9 @@ def sendIPDatagram(dstIP,data,protocol):
                 f_offset = flags | real_offset
 
         ip_header_chk = struct.pack('!BBHHHBBHII',
-                                0x45,               #   VERSION & IHL (4b + 4b) (1B)
-                                0x00,               #   TYPE OF SERVICE (1B)
-                                len(data) + 20,     #   TOTAL LENGTH (2B)
+                                verIHL,             #   VERSION & IHL (4b + 4b) (1B)
+                                0x01,               #   TYPE OF SERVICE (1B)
+                                len(data) + ihl*4,  #   TOTAL LENGTH (2B)
                                 IPID,               #   IDENTIFICATION (2B)
                                 f_offset,           #   FLAGS & OFFSET (3b + 13b) (2B)
                                 0x40,               #   TIME TO LIVE (1B)
@@ -338,9 +346,9 @@ def sendIPDatagram(dstIP,data,protocol):
         print(chksum(ip_header_chk))
 
         ip_header1 = struct.pack('!BBHHHBB',
-                                0x45,               #   VERSION & IHL (4b + 4b) (1B)
-                                0x00,               #   TYPE OF SERVICE (1B)
-                                len(data) + 20,     #   TOTAL LENGTH (2B)
+                                verIHL,             #   VERSION & IHL (4b + 4b) (1B)
+                                0x01,               #   TYPE OF SERVICE (1B)
+                                len(data) + ihl*4,  #   TOTAL LENGTH (2B)
                                 IPID,               #   IDENTIFICATION (2B)
                                 f_offset,           #   FLAGS & OFFSET (3b + 13b) (2B)
                                 0x40,               #   TIME TO LIVE (1B)
