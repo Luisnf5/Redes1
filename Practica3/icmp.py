@@ -84,6 +84,7 @@ def process_ICMP_message(us,header,data,srcIp):
     
     if chksum(data) != icmp_cheksum:
         logging.debug("Checksum incorrecto")
+        return
     
     logging.debug(f"Tipo: {icmp_type}, Código: {icmp_code}")
 
