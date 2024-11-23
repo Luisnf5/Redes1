@@ -1,2 +1,0 @@
-Porque se devuelve un ICMP Port Unreachable pero imprime bien los datos?
-Estoy haciendo bien el calculo de checksum? Por qué en Wireshark pone Header Checksum : [validation disabled]?
