@@ -278,7 +278,11 @@ def sendIPDatagram(dstIP,data,protocol):
         Retorno: True o False en función de si se ha enviado el datagrama correctamente o no
           
     '''
-    max_data_len = MTU - 20
+    if (ipOpts == None):
+        max_data_len = MTU - 20
+    else:
+        max_data_len = MTU - 20 - len(ipOpts)
+
     fragments = []
     fragmented = False
     f_offset = 0x0000
@@ -295,21 +299,20 @@ def sendIPDatagram(dstIP,data,protocol):
     if len(data) > max_data_len:
         fragmented = True
         if max_data_len % 8 != 0:
-            logging.debug('not module of 8 for fragmentation')
             max_data_len = max_data_len - max_data_len % 8
-        
-        if max_data_len % 8 == 0:
-            logging.debug('module of 8 confirmed')
             
         i = 0
-        
         while (len(data) > max_data_len):
-            fragments.append(data[max_data_len*i : max_data_len*(i+1)])
-            data = data[max_data_len*(i+1):]
-            i += 1
+            fragments.append(data[:max_data_len])
+            data = data[max_data_len:]
+            
+            i += 1  
+
 
         if len(data) != 0:
             fragments.append(data)
+
+
         
     else:
         fragments.append(data)
@@ -321,8 +324,7 @@ def sendIPDatagram(dstIP,data,protocol):
             if data == fragments[0]:
                 f_offset = 0x2000
             else:
-                real_offset = struct.pack('!H', max_data_len)
-                real_offset = (max_data_len >> 3)
+                real_offset = (max_data_len*i >> 3)
                 if data == fragments[len(fragments)-1]:
                     flags = 0x0000
                 else:
@@ -338,12 +340,11 @@ def sendIPDatagram(dstIP,data,protocol):
                                 f_offset,           #   FLAGS & OFFSET (3b + 13b) (2B)
                                 0x40,               #   TIME TO LIVE (1B)
                                 protocol,           #   PROTOCOL (1B)
-                                0,                  #   HEADER CHECKSUM
-                                myIP,               #   SOURCE ADDRESS
-                                dstIP)              #   DESTINATION ADDRESS
+                                0,                  #   HEADER CHECKSUM (2B)
+                                myIP,               #   SOURCE ADDRESS (4B)
+                                dstIP)              #   DESTINATION ADDRESS (4B)
         
-        checksum = struct.pack('H', chksum(ip_header_chk))
-        print(chksum(ip_header_chk))
+        checksum = struct.pack('H', chksum(ip_header_chk + ipOpts))
 
         ip_header1 = struct.pack('!BBHHHBB',
                                 verIHL,             #   VERSION & IHL (4b + 4b) (1B)
@@ -355,10 +356,13 @@ def sendIPDatagram(dstIP,data,protocol):
                                 protocol)           #   PROTOCOL (1B)
         
         ip_header2 = struct.pack('!II',
-                                myIP,               #   SOURCE ADDRESS
-                                dstIP)              #   DESTINATION ADDRESS
+                                myIP,               #   SOURCE ADDRESS (4B)
+                                dstIP)              #   DESTINATION ADDRESS (4B)
 
-        frame = ip_header1 + checksum + ip_header2 + data
+        frame_header = ip_header1 + checksum + ip_header2
+        if (ipOpts != None):
+            frame_header += ipOpts
+        frame = frame_header + data
 
         if (myIP & netmask) == (dstIP & netmask):
             dstMac = ARPResolution(dstIP)
@@ -369,10 +373,8 @@ def sendIPDatagram(dstIP,data,protocol):
             logging.debug('ARP devolvió None')
             return False
         
-
-        print(len(frame))
-        print(type(len(frame)))
         sendEthernetFrame(frame, len(frame), 0x0800, dstMac)
+        i += 1
 
     IPID += 1
 
