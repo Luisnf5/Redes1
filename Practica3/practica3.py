@@ -70,7 +70,7 @@ if __name__ == "__main__":
 	#TODO: construir mensaje ICMP según opción --icmpsize
 	
 	startEthernetLevel(args.interface)
-	#initICMP()
+	initICMP()
 	initUDP()
 	if initIP(args.interface,ipOpts) == False:
 		logging.error('Inicializando nivel IP')

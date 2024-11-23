@@ -344,7 +344,10 @@ def sendIPDatagram(dstIP,data,protocol):
                                 myIP,               #   SOURCE ADDRESS (4B)
                                 dstIP)              #   DESTINATION ADDRESS (4B)
         
-        checksum = struct.pack('H', chksum(ip_header_chk + ipOpts))
+        if (ipOpts != None):
+            checksum = struct.pack('H', chksum(ip_header_chk + ipOpts))
+        else:
+            checksum = struct.pack('H', chksum(ip_header_chk))
 
         ip_header1 = struct.pack('!BBHHHBB',
                                 verIHL,             #   VERSION & IHL (4b + 4b) (1B)

@@ -70,6 +70,40 @@ def process_ICMP_message(us,header,data,srcIp):
         Retorno: Ninguno
           
     '''
+
+    print('CHECKSUM CALCULADO: ', chksum(bytearray(data)))
+    print('DATA: ', data)
+    print('LEN DATA: ', len(data))
+
+    icmp_header = struct.unpack('!BBHHH', data[:8])
+    icmp_type = icmp_header[0]
+    icmp_code = icmp_header[1]
+    icmp_cheksum = icmp_header[2]
+    icmp_id = icmp_header[3]
+    icmp_seqnum = icmp_header[4]
+    
+    if chksum(data) != icmp_cheksum:
+        logging.debug("Checksum incorrecto")
+    
+    logging.debug(f"Tipo: {icmp_type}, Código: {icmp_code}")
+
+    if icmp_type == ICMP_ECHO_REQUEST_TYPE:
+        sendICMPMessage(data, ICMP_ECHO_REPLY_TYPE, icmp_code, icmp_id, icmp_seqnum, srcIp)
+    elif icmp_type == ICMP_ECHO_REPLY_TYPE:
+        key = f"{srcIp}-{icmp_header[3]}-{icmp_header[4]}"
+        send_time = None
+        with timeLock:
+            send_time = icmp_send_times[key]
+        
+        if send_time is None:
+            logging.debug("No se ha encontrado el tiempo de envío")
+            return
+
+        rtt = header.ts.tv_sec - send_time
+        logging.debug(f"RTT: {rtt}")
+    else:
+        return
+
     
 
 def sendICMPMessage(data,type,code,icmp_id,icmp_seqnum,dstIP):
@@ -110,9 +144,16 @@ def sendICMPMessage(data,type,code,icmp_id,icmp_seqnum,dstIP):
     icmp_header = struct.pack('!BBHHH', type, code, 0, icmp_id, icmp_seqnum)
     icmp_message = icmp_header + data
 
+    if len(icmp_message) % 2 != 0:
+        icmp_message += b'\0'
+
     # Calcular el checksum
     checksum = chksum(icmp_message)
-    icmp_header = struct.pack('!BBHHH', type, code, checksum, icmp_id, icmp_seqnum)
+    icmp_header1 = struct.pack('!BB', type, code)
+    checksum = struct.pack('H', checksum)
+    icmp_header2 = struct.pack('!HH', icmp_id, icmp_seqnum)
+    icmp_header = icmp_header1 + checksum + icmp_header2
+
     icmp_message = icmp_header + data
 
     if type == ICMP_ECHO_REQUEST_TYPE:
