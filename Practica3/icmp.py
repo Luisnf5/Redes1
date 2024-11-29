@@ -5,6 +5,7 @@
     Autor: Javier Ramos <javier.ramos@uam.es>
     2022 EPS-UAM
 '''
+import datetime
 from ip import *
 from threading import Lock
 import struct
@@ -70,6 +71,7 @@ def process_ICMP_message(us,header,data,srcIp):
         Retorno: Ninguno
           
     '''
+    global timeLock, icmp_send_times
 
     icmp_header1 = struct.unpack('!BB', data[:2])
     icmp_type = icmp_header1[0]
@@ -88,7 +90,7 @@ def process_ICMP_message(us,header,data,srcIp):
     logging.debug(f"Tipo: {icmp_type}, Código: {icmp_code}")
 
     if icmp_type == ICMP_ECHO_REQUEST_TYPE:
-        sendICMPMessage(data, ICMP_ECHO_REPLY_TYPE, icmp_code, icmp_id, icmp_seqnum, srcIp)
+        sendICMPMessage(data[8:], ICMP_ECHO_REPLY_TYPE, icmp_code, icmp_id, icmp_seqnum, srcIp)
     elif icmp_type == ICMP_ECHO_REPLY_TYPE:
         key = f"{srcIp}-{icmp_id}-{icmp_seqnum}"
         send_time = None
@@ -98,10 +100,13 @@ def process_ICMP_message(us,header,data,srcIp):
         if send_time is None:
             logging.debug("No se ha encontrado el tiempo de envío")
             return
-
-        recv_time = header.ts.tv_sec + header.ts.tv_usec / 1000000
-        rtt = recv_time - send_time
-        logging.debug(f"RTT: {rtt}")
+        
+        recv_time = header.ts.tv_sec + (header.ts.tv_usec / 1000000)
+        rtt = round(recv_time - send_time, 3)
+        if rtt < 0.001:
+            logging.debug(f"RTT: {rtt * 1000} ms")
+        else:
+            logging.debug(f"RTT: {rtt} s")
     else:
         return
 
@@ -161,9 +166,8 @@ def sendICMPMessage(data,type,code,icmp_id,icmp_seqnum,dstIP):
         # Guardar el tiempo de envío
         key = f"{dstIP}-{icmp_id}-{icmp_seqnum}"
         with timeLock:
-            icmp_send_times[key] = time.time()
+            icmp_send_times[key] = time.time() 
 
-    # Llamar a sendIPDatagram para enviar el mensaje ICMP
     
     return sendIPDatagram(dstIP, icmp_message, ICMP_PROTO)
 

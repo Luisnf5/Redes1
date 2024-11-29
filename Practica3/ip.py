@@ -171,7 +171,7 @@ def process_IP_datagram(us,header,data,srcMac):
     DF = (flags >> 14) & 1
     MF = (flags >> 13) & 1
 
-    if offset != 0:
+    if offset != 0 or MF != 0:
         logging.info("Reensamblado no implementado, deshechando datagrama...")
         return
     
@@ -188,7 +188,7 @@ def process_IP_datagram(us,header,data,srcMac):
     logging.debug('Protocolo: %d', protocol)
 
     if protocol in protocols:
-        protocols[protocol](us,header,data[20:],src_ip)
+        protocols[protocol](us,header,data[header_len:],src_ip)
     else:
         logging.debug("Protocolo no registrado")
 
@@ -246,6 +246,11 @@ def initIP(interface,opts=None) -> bool:
     MTU = getMTU(interface)
     netmask = getNetmask(interface)
     defaultGW = getDefaultGW(interface)
+    if (opts != None):
+        if (len(opts) % 4 != 0):
+            for _ in range(4 - len(opts) % 4):
+                opts += b'\x00'
+
     ipOpts = opts
 
     registerEthCallback(process_IP_datagram,0x0800)
@@ -282,6 +287,7 @@ def sendIPDatagram(dstIP,data,protocol):
         max_data_len = MTU - 20
     else:
         max_data_len = MTU - 20 - len(ipOpts)
+        
 
     fragments = []
     fragmented = False

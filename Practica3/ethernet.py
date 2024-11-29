@@ -228,9 +228,6 @@ def sendEthernetFrame(data:bytes,length:int,etherType:int,dstMac:bytes) -> int:
     global macAddress,handle
     packet = bytearray()
 
-    print(length)
-    print(type(length))
-
     if handle == None or macAddress == None:
         logging.error("Ejecute primero startEthernetLevel")
         return -1
