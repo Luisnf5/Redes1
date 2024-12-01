@@ -344,7 +344,7 @@ def sendIPDatagram(dstIP,data,protocol):
                                 len(data) + ihl*4,  #   TOTAL LENGTH (2B)
                                 IPID,               #   IDENTIFICATION (2B)
                                 f_offset,           #   FLAGS & OFFSET (3b + 13b) (2B)
-                                0x40,               #   TIME TO LIVE (1B)
+                                0x41,               #   TIME TO LIVE (1B)
                                 protocol,           #   PROTOCOL (1B)
                                 0,                  #   HEADER CHECKSUM (2B)
                                 myIP,               #   SOURCE ADDRESS (4B)
@@ -361,7 +361,7 @@ def sendIPDatagram(dstIP,data,protocol):
                                 len(data) + ihl*4,  #   TOTAL LENGTH (2B)
                                 IPID,               #   IDENTIFICATION (2B)
                                 f_offset,           #   FLAGS & OFFSET (3b + 13b) (2B)
-                                0x40,               #   TIME TO LIVE (1B)
+                                0x41,               #   TIME TO LIVE (1B)
                                 protocol)           #   PROTOCOL (1B)
         
         ip_header2 = struct.pack('!II',
