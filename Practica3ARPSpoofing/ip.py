@@ -374,6 +374,7 @@ def sendIPDatagram(dstIP,data,protocol):
         frame = frame_header + data
 
         if (myIP & netmask) == (dstIP & netmask):
+            print('preguntando por MAC de ' + str(dstIP))
             dstMac = ARPResolution(dstIP)
         else:
             dstMac = ARPResolution(defaultGW)

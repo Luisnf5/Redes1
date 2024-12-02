@@ -58,7 +58,7 @@ if __name__ == "__main__":
 
 	if args.ipSpoofed:
 		logging.info('Activando Spoofing')
-		ARPSpoof(struct.unpack('!I',socket.inet_aton(args.dstIP))[0])
+		ActivateARPSpoofing(struct.unpack('!I',socket.inet_aton(args.dstIP))[0])
 
 	ipOpts = None
 	if args.addOptions:

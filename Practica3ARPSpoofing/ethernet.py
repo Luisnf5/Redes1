@@ -79,9 +79,6 @@ def process_Ethernet_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes) -> 
     ethType = struct.unpack("!H",data[12:14])[0]
     payload = data[14:]
 
-    if ethDest != broadcastAddr and ethDest != macAddress:
-        return
-
 
     if ethType not in EthernetProtocols:
         return

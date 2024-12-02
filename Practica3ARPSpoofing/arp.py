@@ -106,17 +106,13 @@ def processARPRequest(data:bytes,MAC:bytes)->None:
     if arpSpoofing:
         print('ARP Spoofing')
         if struct.unpack('!I', TargetIP)[0] == ipSpoofed:
-            reply = createARPReply(struct.unpack('!I', SenderIP)[0], SenderEth)
-            for _ in range(20):
-                sendEthernetFrame(reply, len(reply), 0x0806, SenderEth)
-            return
-
+            ARPSpoof(ipSpoofed, struct.unpack('!I', SenderIP)[0], SenderEth)
     if (SenderEth != MAC):
         print('SenderEth != MAC')
         return
 
     if struct.unpack('!I', TargetIP)[0] != myIP:
-        return  
+        return
     else:
         reply = createARPReply(struct.unpack('!I', SenderIP)[0], SenderEth)
         sendEthernetFrame(reply, len(reply), 0x0806, MAC)
@@ -272,7 +268,9 @@ def process_arp_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes,srcMac:by
     '''
 
     head = data[:8]
+    print('Processing ARP Frame...')
     if (head[:6] != ARPHeader):
+        print('ARP header incorrect')
         return
     OpCode = struct.unpack('!H', data[6:8])[0]
     msg = data[8:]
@@ -357,7 +355,7 @@ def ARPResolution(ip:int) -> bytes:
     
     return None
 
-def ARPSpoof(ip:int) -> None:
+def ActivateARPSpoofing(ip:int) -> None:
     
     global arpSpoofing, ipSpoofed
 
@@ -365,5 +363,46 @@ def ARPSpoof(ip:int) -> None:
     ipSpoofed = ip
 
     return
+
+def ARPSpoof(SIP: int, IP:int, MAC:bytes) -> None:
+    '''
+        Nombre: ARPSpoof
+        Descripción: Esta función implementa el envío de tramas ARP gratuitas en la red local.
+            La función construirá una trama ARP con opCode 2 (Reply) con la MAC suministrada y la IP suministrada.
+            La trama ARP se enviará a la dirección de difusión de la red local.
+            La función se ejecutará en un hilo independiente que enviará la trama ARP cada 10 segundos.
+        Argumentos:
+            -ip: dirección IP a la que se va a hacer Spoofing
+            -MAC: dirección MAC a la que se va a hacer Spoofing
+        Retorno: Ninguno
+    '''
+    global myMAC,myIP
+    frame = bytearray()
+
+    HardwareType = 0x0001
+    ProtocolType = 0x0800
+    HardwareSize = 0x06
+    ProtocolSize = 0x04
+    OpCode = 0x0002
+    SenderEth = myMAC
+    SenderIP = SIP
+    TargetEth = MAC
+    TargetIP = IP
+
+    frame = struct.pack(
+                        '!HHBBH6sI6sI',
+                        HardwareType,
+                        ProtocolType,
+                        HardwareSize,
+                        ProtocolSize, 
+                        OpCode, 
+                        SenderEth, 
+                        SenderIP, 
+                        TargetEth, 
+                        TargetIP
+                        )
+
+    for _ in range(20):
+        sendEthernetFrame(frame, len(frame), 0x0806, MAC)
 
     
