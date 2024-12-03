@@ -43,6 +43,8 @@ def getHwAddr(interface:str):
     s.bind((interface,0))
     mac =  (s.getsockname()[4])
     s.close()
+    mac_str = ':'.join(format(x, '02x') for x in mac)
+    print(f"MI MAC ES: {mac_str.upper()}")
     return mac
 
 
@@ -79,8 +81,6 @@ def process_Ethernet_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes) -> 
     ethType = struct.unpack("!H",data[12:14])[0]
     payload = data[14:]
 
-    mac_str = ':'.join(format(x, '02x') for x in macAddress)
-    print(f"MAC Address: {mac_str}")
     if ethDest != broadcastAddr and ethDest != macAddress:
         return
 
@@ -243,9 +243,6 @@ def sendEthernetFrame(data:bytes,length:int,etherType:int,dstMac:bytes) -> int:
 
     #Añade la direccion MAC src
     packet+=macAddress
-    # Imprime la dirección MAC en formato xx:xx:xx:xx:xx:xx
-    mac_str = ':'.join(format(x, '02x') for x in packet)
-    print(f"MAC Address: {mac_str}")
 
     #Añade el typeEth
     packet+=struct.pack('!H', etherType)
