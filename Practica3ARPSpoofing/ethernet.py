@@ -79,6 +79,11 @@ def process_Ethernet_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes) -> 
     ethType = struct.unpack("!H",data[12:14])[0]
     payload = data[14:]
 
+    mac_str = ':'.join(format(x, '02x') for x in macAddress)
+    print(f"MAC Address: {mac_str}")
+    if ethDest != broadcastAddr and ethDest != macAddress:
+        return
+
 
     if ethType not in EthernetProtocols:
         return
@@ -238,6 +243,9 @@ def sendEthernetFrame(data:bytes,length:int,etherType:int,dstMac:bytes) -> int:
 
     #Añade la direccion MAC src
     packet+=macAddress
+    # Imprime la dirección MAC en formato xx:xx:xx:xx:xx:xx
+    mac_str = ':'.join(format(x, '02x') for x in packet)
+    print(f"MAC Address: {mac_str}")
 
     #Añade el typeEth
     packet+=struct.pack('!H', etherType)

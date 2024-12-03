@@ -37,7 +37,7 @@ if __name__ == "__main__":
 	parser.add_argument('--addOptions', dest='addOptions', default=False, action='store_true',help='Añadir opciones a los datagranas IP')
 	parser.add_argument('--dataFile',dest='dataFile',default = False,help='Fichero con datos a enviar')
 	parser.add_argument('--icmpsize',dest='icmpsize',default = 12,help='Tamaño del payload de ICMP', type=int)
-	parser.add_argument('--spoof', dest='ipSpoofed', default=False, action='store_true', help='Activar Spoofing')
+	parser.add_argument('--spoof', dest='ipSpoofed', default=False, help='Activar Spoofing')
 
 	args = parser.parse_args()
 
@@ -55,10 +55,6 @@ if __name__ == "__main__":
 		logging.error('No se ha especificado dirección IP')
 		parser.print_help()
 		sys.exit(-1)
-
-	if args.ipSpoofed:
-		logging.info('Activando Spoofing')
-		ActivateARPSpoofing(struct.unpack('!I',socket.inet_aton(args.dstIP))[0])
 
 	ipOpts = None
 	if args.addOptions:
@@ -82,9 +78,10 @@ if __name__ == "__main__":
 		logging.error('Inicializando nivel IP')
 		sys.exit(-1)
 
-	
-	
-	
+	if args.ipSpoofed:
+		logging.info('Activando Spoofing')
+		ActivateARPSpoofing(struct.unpack('!I',socket.inet_aton(args.ipSpoofed))[0], struct.unpack('!I',socket.inet_aton(args.dstIP))[0])
+
 	while True:
 		try:
 			msg = input('\n\t0x16\n\tIntroduzca opcion:\n\t1.Enviar ping\n\t2.Enviar datagrama UDP:')

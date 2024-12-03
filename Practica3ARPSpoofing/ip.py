@@ -379,6 +379,7 @@ def sendIPDatagram(dstIP,data,protocol):
         else:
             dstMac = ARPResolution(defaultGW)
 
+
         if dstMac == None:
             logging.debug('ARP devolvió None')
             return False

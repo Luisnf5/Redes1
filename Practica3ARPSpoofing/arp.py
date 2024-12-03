@@ -15,6 +15,7 @@ import fcntl
 import time
 from threading import Lock
 from expiringdict import ExpiringDict
+import threading
 
 #Dirección de difusión (Broadcast)
 broadcastAddr = bytes([0xFF]*6)
@@ -101,14 +102,8 @@ def processARPRequest(data:bytes,MAC:bytes)->None:
     SenderEth = data[0:6]
     SenderIP = data[6:10]
     TargetIP = data[16:20]
-
-    print('SenderIP: ', SenderIP)
-    if arpSpoofing:
-        print('ARP Spoofing')
-        if struct.unpack('!I', TargetIP)[0] == ipSpoofed:
-            ARPSpoof(ipSpoofed, struct.unpack('!I', SenderIP)[0], SenderEth)
+    
     if (SenderEth != MAC):
-        print('SenderEth != MAC')
         return
 
     if struct.unpack('!I', TargetIP)[0] != myIP:
@@ -118,7 +113,33 @@ def processARPRequest(data:bytes,MAC:bytes)->None:
         sendEthernetFrame(reply, len(reply), 0x0806, MAC)
 
 
+class rxThreadARP(threading.Thread): 
+    ''' Clase que implementa un hilo de recepción. De esta manera al iniciar el nivel Ethernet
+        podemos dejar un hilo con pcap_loop que reciba los paquetes sin bloquear el envío.
+        En esta clase NO se debe modificar código
+    '''
+    
 
+
+    def __init__(self, VictimIP, ipSpoofed): 
+        self.ipSpoofed = ipSpoofed
+        self.victimIP = VictimIP
+        self.MACSpoofed = ARPResolution(ipSpoofed)
+        if self.MACSpoofed is None:
+            print('No se ha podido obtener la MAC Spoofed')
+            return
+        threading.Thread.__init__(self) 
+              
+    def run(self): 
+        print('Starting ARP Spoofing from thread')
+        while True:
+            ARPSpoof(self.victimIP, self.ipSpoofed, self.MACSpoofed)
+        
+    def stop(self):
+        global handle
+        #Para la ejecución de pcap_loop
+        if handle is not None:
+            pcap_breakloop(handle)
 
 
 def processARPReply(data:bytes,MAC:bytes)->None:
@@ -268,9 +289,7 @@ def process_arp_frame(us:ctypes.c_void_p,header:pcap_pkthdr,data:bytes,srcMac:by
     '''
 
     head = data[:8]
-    print('Processing ARP Frame...')
     if (head[:6] != ARPHeader):
-        print('ARP header incorrect')
         return
     OpCode = struct.unpack('!H', data[6:8])[0]
     msg = data[8:]
@@ -355,12 +374,16 @@ def ARPResolution(ip:int) -> bytes:
     
     return None
 
-def ActivateARPSpoofing(ip:int) -> None:
+def ActivateARPSpoofing(victimIP:int, spoofedIP:int) -> None:
     
-    global arpSpoofing, ipSpoofed
+    global arpSpoofing, ipSpoofed, myIP
 
     arpSpoofing = True
-    ipSpoofed = ip
+    ipSpoofed = spoofedIP
+
+    recvThread = rxThreadARP(victimIP, ipSpoofed)
+    recvThread.daemon = True
+    recvThread.start()
 
     return
 
