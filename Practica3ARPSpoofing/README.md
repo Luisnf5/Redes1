@@ -93,3 +93,23 @@ python3 practica3.py --itf <interfaz> --dstIP <direccion_IP_destino> [opciones] 
 - `--dataFile <ruta_al_fichero>`: Especifica un fichero con los datos a enviar.
 - `--icmpsize <tamaño>`: Especifica el tamaño del payload de ICMP (por defecto es 12).
 - `--spoof <ipSpoofed>`: Activa el ARP Spoofing con la dirección IP especificada.
+
+### Ejemplos de Ejecución
+
+#### Sin ARP Spoofing
+
+```sh
+H1: python3 practica3.py --itf h1-eth0 --dstIP 10.0.0.2 --debug
+
+H2: python3 practica3.py --itf h2-eth0 --dstIP 10.0.0.1 --debug
+```
+
+#### Con ARP Spoofing
+
+```sh
+H1: python3 practica3.py --itf h1-eth0 --dstIP 10.0.0.2 --debug
+
+H2: python3 practica3.py --itf h2-eth0 --dstIP 10.0.0.1 --debug
+
+H3: python3 practica3.py --itf h3-eth0 --dstIP 10.0.0.2 --debug --spoof 10.0.0.1
+```
