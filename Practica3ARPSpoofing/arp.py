@@ -385,7 +385,7 @@ def ActivateARPSpoofing(victimIP:int, spoofedIP:int) -> None:
     recvThread.daemon = True
     recvThread.start()
 
-    return
+    return recvThread
 
 def ARPSpoof(SIP: int, IP:int, MAC:bytes) -> None:
     '''
@@ -429,4 +429,4 @@ def ARPSpoof(SIP: int, IP:int, MAC:bytes) -> None:
         time.sleep(0.05)
         sendEthernetFrame(frame, len(frame), 0x0806, MAC)
 
-    
+

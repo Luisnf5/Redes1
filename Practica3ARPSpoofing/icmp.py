@@ -9,6 +9,7 @@ import datetime
 from ip import *
 from threading import Lock
 import struct
+import logging  # Added import for logging
 
 ICMP_PROTO = 1
 
@@ -95,7 +96,7 @@ def process_ICMP_message(us,header,data,srcIp):
         key = f"{srcIp}-{icmp_id}-{icmp_seqnum}"
         send_time = None
         with timeLock:
-            send_time = icmp_send_times[key]
+            send_time = icmp_send_times.get(key)  # Use get to avoid KeyError
         
         if send_time is None:
             logging.debug("No se ha encontrado el tiempo de envío")
@@ -103,10 +104,7 @@ def process_ICMP_message(us,header,data,srcIp):
         
         recv_time = header.ts.tv_sec + (header.ts.tv_usec / 1000000)
         rtt = round(recv_time - send_time, 3)
-        if rtt < 0.001:
-            logging.debug(f"RTT: {rtt * 1000} ms")
-        else:
-            logging.debug(f"RTT: {rtt} s")
+        logging.debug(f"RTT: {rtt} s")
     else:
         return
 

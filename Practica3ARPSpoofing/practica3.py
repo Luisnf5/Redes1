@@ -23,7 +23,7 @@ DST_PORT = 53
 ICMP_ECHO_REQUEST_TYPE = 8
 ICMP_ECHO_REQUEST_CODE = 0
 # TODO: Cambiar ICMP_ID según enunciado
-ICMP_ID = 0
+ICMP_ID = 5
 
 ipRROption = bytes([7,11,4,0,0,0,0,0,0,0,0,0])
 
@@ -80,7 +80,7 @@ if __name__ == "__main__":
 
 	if args.ipSpoofed:
 		logging.info('Activando Spoofing')
-		ActivateARPSpoofing(struct.unpack('!I',socket.inet_aton(args.ipSpoofed))[0], struct.unpack('!I',socket.inet_aton(args.dstIP))[0])
+		ARPSpoofingThread = ActivateARPSpoofing(struct.unpack('!I',socket.inet_aton(args.ipSpoofed))[0], struct.unpack('!I',socket.inet_aton(args.dstIP))[0])
 
 	while True:
 		try:
