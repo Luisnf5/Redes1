@@ -83,3 +83,13 @@ Para ejecutar la práctica, se debe utilizar el archivo `practica3.py` con los a
 ```sh
 python3 practica3.py --itf <interfaz> --dstIP <direccion_IP_destino> [opciones] --spoof <ipSpoofed>
 ```
+
+### Argumentos de `practica3.py`
+
+- `--itf <interfaz>`: Especifica la interfaz de red a utilizar.
+- `--dstIP <direccion_IP_destino>`: Especifica la dirección IP destino.
+- `--debug`: Activa los mensajes de depuración.
+- `--addOptions`: Añade opciones a los datagramas IP.
+- `--dataFile <ruta_al_fichero>`: Especifica un fichero con los datos a enviar.
+- `--icmpsize <tamaño>`: Especifica el tamaño del payload de ICMP (por defecto es 12).
+- `--spoof <ipSpoofed>`: Activa el ARP Spoofing con la dirección IP especificada.
