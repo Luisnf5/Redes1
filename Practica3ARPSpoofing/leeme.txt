@@ -1,0 +1,57 @@
+AUTORES: DAVID LOSADA GARCÍA Y LUIS NÚÑEZ FERNÁNDEZ // PAREJA 5
+
+Normativa de entrega cumplida en su totalidad: 2,5%
+REALIZADO
+
+Fichero leeme.txt bien explicado: 2,5%
+REALIZADO
+
+Recibir y enviar datagramas UDP sin opciones IP ni fragmentación 25%
+REALIZADO, para comprobar su correcta implementación revisamos que ejecutando con la opción debug en h1 y h2 las opciones que aparecen por pantalla son las correctas. 
+Vemos también en wireshark 
+que h2 recibe un mensaje de tipo DNS y que las opciones coinciden con lo mostrado por pantalla.
+
+Recibir y enviar mensajes ICMP sin opciones IP ni fragmentación (incluyendo pruebas con ping estándar) 20%
+REALIZADO, para comprobarlo ejecutamos la práctica en h1 y h2, y abrimos wireshark con h2-eth0. Al seleccionar la opción 1 en h1 debemos de ver 
+en wireshark dos mensajes Echo (ping) reply, uno será generado por el sistema automáticamente, y el otro será generado 
+por nosotros y deberá tener ttl = 65. también deber verse un Echo (ping) request
+
+Enviar y recibir correctamente mensajes ICMP con opciones IP 10%
+REALIZADO,misma manera que el apartado anterior.
+
+Enviar y recibir mensajes ICMP con un tamaño determinado 5%
+REALIZADO, ejecutamos en h1 la práctica con la opción --icmpsize 30, y en h2 la práctica normal. Tras enviar ping con la opción 1, 
+vemos en wireshark que el mensaje Echo (ping) request cuenat en su data con el abecedario completo (26 bytes) + 4 letras de inicio de nuevo ( ABCD),
+dando 30 bytes como habíamos indicado.
+
+Enviar datagramas UDP con fragmentación 10%
+REALIZADO, ejecutamos en h1 la práctica con la opción --addFile longfile.txt, y en h2 la práctica normal. Tras selecccionar la opción 2, vemos en wireshark 
+los diferentes paqeutes en los que se ha fragmentando el datagrama UDP, todos con el mismo ID y cada
+uno con cierta información del txt, que será ordenada de nuevo por los offsets del paquete. En la terminal de h2 podemos observar errores a la hora de reenamblar, 
+que son normales ya que eso no está implementado.
+
+Enviar datagramas UDP con fragmentación y opciones IP 10%
+REALIZADO, misma manera que el apartado anterior añadiendo la bandera --addOptions.
+
+Enviar datagramas UDP fuera de la subred actual 15%
+REALIZADO, en la terminal de h2 ejecutamos la práctica solo con --debug pero en este caso con dstIP 8.8.8.8, que se encuentra fuera de nuestra subred. 
+Al seleccionar la opción 2 para enviar un datagrama UDP vemos en wireshark que se esta preguntado por 10.0.0.3 que es
+la dirección de salida de la subred. Recibimos la respuesta automática de google.
+
+También se ha implementado la opción de realizar ARP Spoofing
+- **Activar ARP Spoofing**
+  - Cuando se activa, se envían respuestas ARP falsas a la dirección IP destino (`dstIP`) con la dirección IP de `ipSpoofed`.
+  - Comando: `--spoof <ipSpoofed>`
+  - Función: `ActivateARPSpoofing(victimIP, ipSpoofed)`
+## Ejecución
+Para ejecutar la práctica, se debe utilizar el archivo `practica3.py` con los argumentos necesarios. Ejemplo de uso:
+python3 practica3.py --itf <interfaz> --dstIP <direccion_IP_destino> [opciones] --spoof <ipSpoofed>
+--spoof <ipSpoofed>`: Activa el ARP Spoofing con la dirección IP especificada.
+
+### Ejemplos de Ejecución
+H1: python3 practica3.py --itf h1-eth0 --dstIP 10.0.0.2 --debug
+
+H2: python3 practica3.py --itf h2-eth0 --dstIP 10.0.0.1 --debug
+
+H3: python3 practica3.py --itf h3-eth0 --dstIP 10.0.0.2 --debug --spoof 10.0.0.1
+
