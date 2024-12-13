@@ -171,7 +171,7 @@ def process_IP_datagram(us,header,data,srcMac):
     DF = (flags >> 14) & 1
     MF = (flags >> 13) & 1
 
-    if offset != 0 or MF != 0:
+    if offset != 0:
         logging.info("Reensamblado no implementado, deshechando datagrama...")
         return
     
