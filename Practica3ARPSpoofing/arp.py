@@ -426,7 +426,6 @@ def ARPSpoof(SIP: int, IP:int, MAC:bytes) -> None:
                         )
 
     for _ in range(20):
-        time.sleep(0.05)
         sendEthernetFrame(frame, len(frame), 0x0806, MAC)
 
 
